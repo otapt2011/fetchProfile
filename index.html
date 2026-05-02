@@ -20,11 +20,16 @@ extend: {}
   <!-- JaferSQL (client‑side SQLite) -->
   <script src="jafersql.js"></script>
   <style>
-    body { padding-top: env(safe-area-inset-top)!important; padding-bottom: env(safe-area-inset-bottom)!important; }
+    body {
+      padding-top: env(safe-area-inset-top)!important;
+      /*
+      padding-bottom: env(safe-area-inset-bottom)!important;
+      */
+    }
   
   </style>
 </head>
-<body class="flex flex-col bg-white dark:bg-black text-gray-800 dark:text-white font-sans text-sm h-full overflow-hidden relative pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+<body class="flex flex-col bg-white dark:bg-black text-gray-800 dark:text-white font-sans text-sm h-full overflow-hidden">
 
   <!-- ========== HEADER ========== -->
   <header class="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-between z-10 px-2 py-2">
