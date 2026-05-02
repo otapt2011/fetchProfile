@@ -21,14 +21,13 @@ extend: {}
   <script src="jafersql.js"></script>
   <style>
     body { padding-top: env(safe-area-inset-top)!important; padding-bottom: env(safe-area-inset-bottom)!important; }
-    header { padding-top: env(safe-area-inset-top)!important; }
-    footer { padding-bottom: env(safe-area-inset-bottom)!important; }
+  
   </style>
 </head>
-<body class="bg-white dark:bg-black text-gray-800 dark:text-white font-sans text-sm h-screen overflow-hidden relative pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+<body class="flex flex-col bg-white dark:bg-black text-gray-800 dark:text-white font-sans text-sm h-screen overflow-hidden relative pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
 
   <!-- ========== HEADER ========== -->
-  <header class="absolute top-0 left-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-between z-10 pt-[env(safe-area-inset-top)] px-2 py-2">
+  <header class="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-between z-10 px-2 py-2">
 
     <!-- Logo -->
     <div id="logo" class="h-6 w-14 overflow-hidden flex items-center justify-center">
@@ -49,7 +48,7 @@ extend: {}
   </header>
 
   <!-- ========== MAIN (flex column) ========== -->
-  <main class="h-full min-h-0 w-full min-w-0 flex flex-row overflow-hidden pt-10 pb-5 px-2 pl-1 gap-2">
+  <main class="h-full min-h-0 w-full min-w-0 flex flex-row flex-1 overflow-hidden pt-10 pb-5 px-2 pl-1 gap-2">
 
     <!-- Sidebar -->
     <aside class="flex flex-col px-1 py-4 h-full min-h-0 w-14 bg-gray-100 dark:bg-gray-800 overflow-hidden gap-6">
@@ -144,7 +143,7 @@ extend: {}
   </main>
 
   <!-- ========== FOOTER ========== -->
-  <footer class="absolute bottom-0 left-0 w-full bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-between z-10 pb-[env(safe-area-inset-bottom)] px-2 py-0 pt-1">
+  <footer class="w-full bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-between z-10 px-2 py-1">
     <div class="flex px-2 w-full h-3 overflow-hidden min-w-0 w-full">
       <span id="dbStatus" class="flex-1 text-green-600 dark:text-green-400 text-xs ml-2"></span>
       <span class="text-xs text-gray-500 dark:text-gray-400">v1.0</span>
