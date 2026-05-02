@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>TikTok · All Participants + SQLite DB</title>
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Tailwind CSS with dark mode class strategy -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+tailwind.config = {
+darkMode: 'class',
+theme: {
+extend: {}
+}
+}
+</script>
+  <!-- JaferSQL (client‑side SQLite) -->
+  <script src="jafersql.js"></script>
+  <style>
+    body { padding-top: env(safe-area-inset-top)!important; padding-bottom: env(safe-area-inset-bottom)!important; }
+    header { padding-top: env(safe-area-inset-top)!important; }
+    footer { padding-bottom: env(safe-area-inset-bottom)!important; }
+  </style>
+</head>
+<body class="bg-white dark:bg-black text-gray-800 dark:text-white font-sans text-sm h-screen overflow-hidden relative pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+
+  <!-- ========== HEADER ========== -->
+  <header class="absolute top-0 left-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-between z-10 pt-[env(safe-area-inset-top)] px-2 py-2">
+
+    <!-- Logo -->
+    <div id="logo" class="h-6 w-14 overflow-hidden flex items-center justify-center">
+      <i class="fa-brands fa-tiktok text-pink-600 dark:text-pink-400 text-xl"></i>
+    </div>
+
+    <!-- Title -->
+    <div id="title" class="h-6 flex-1 overflow-hidden flex items-center px-2">
+      <span class="text-sm font-semibold text-gray-800 dark:text-white truncate">TikTok Profile Extractor</span>
+    </div>
+
+    <!-- Theme toggle -->
+    <div id="theme" class="h-6 w-8 overflow-hidden flex items-center justify-center">
+      <button id="themeToggle" class="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition">
+        <i class="fa-solid fa-moon text-lg"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========== MAIN (flex column) ========== -->
+  <main class="h-full min-h-0 w-full min-w-0 flex flex-row overflow-hidden pt-10 pb-5 px-2 pl-1 gap-2">
+
+    <!-- Sidebar -->
+    <aside class="flex flex-col px-1 py-4 h-full min-h-0 w-14 bg-gray-100 dark:bg-gray-800 overflow-hidden gap-6">
+      <div class="flex flex-col gap-2 items-center w-full overflow-hidden">
+        <button id="uploadBtn" class="bg-pink-600 hover:bg-pink-700 text-white py-1 px-1 rounded-md text-xs transition flex flex-col items-center w-full max-w-full">
+          <i class="fa-solid fa-upload mb-1"></i>
+          <span>Upload</span>
+        </button>
+        <button id="fetchAllBtn" disabled class="bg-teal-600 hover:bg-teal-700 text-white py-1 px-1 rounded-md text-xs transition disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center w-full max-w-full">
+          <i class="fa-solid fa-play mb-1"></i>
+          <span>Fetch</span>
+        </button>
+        <div class="w-full h-1 bg-gray-200 dark:bg-gray-900 rounded-full overflow-hidden"></div>
+        <button id="pauseBtn" disabled class="bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-1 rounded-md text-xs transition disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center w-full max-w-full">
+          <i class="fa-solid fa-pause mb-1"></i>
+          <span>Pause</span>
+        </button>
+        <button id="stopBtn" disabled class="bg-red-600 hover:bg-red-700 text-white py-1 px-1 rounded-md text-xs transition disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center w-full max-w-full">
+          <i class="fa-solid fa-stop mb-1"></i>
+          <span>Stop</span>
+        </button>
+      </div>
+
+      <div class="w-full h-1 bg-gray-200 dark:bg-gray-900 rounded-full overflow-hidden"></div>
+
+      <div class="flex flex-col gap-2 items-center w-full overflow-hidden">
+        <button id="downloadProfilesBtn" disabled class="flex flex-col items-center bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-1 w-full max-w-full rounded-md text-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-download mb-1"></i>
+          <span>Profiles</span>
+        </button>
+        <button id="downloadMessagesBtn" disabled class="flex flex-col items-center bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-1 w-full max-w-full rounded-md text-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-download mb-1"></i>
+          <span>Messages</span>
+        </button>
+        <button id="downloadSQLiteBtn" disabled class="flex flex-col items-center bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-1 w-full max-w-full rounded-md text-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-database mb-1"></i>
+          <span>SQLite</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main content area -->
+    <div class="flex-1 min-h-0 flex flex-col overflow-hidden gap-2">
+      <!-- Stats summary -->
+      <div class="flex justify-center gap-4 flex-shrink-0 bg-white dark:bg-gray-900 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700">
+        <div class="text-center min-w-20">
+          <div id="participantCount" class="text-lg font-bold">0</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Participants</div>
+        </div>
+        <div class="text-center min-w-20">
+          <div id="totalMsgCount" class="text-lg font-bold">0</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Total Msgs</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div id="progressArea" class="flex-shrink-0 bg-white dark:bg-gray-900 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700">
+        <div class="w-full h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+          <div id="progressBar" class="h-full bg-pink-600 transition-all duration-300" style="width:0%"></div>
+        </div>
+        <p id="progressText" class="text-center text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
+      </div>
+
+      <!-- Table container (scrollable) -->
+      <div id="tableContainer" class="flex-1 overflow-y-auto bg-white dark:bg-gray-900 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700">
+        <table id="profileTable" class="w-full text-xs border-collapse table-fixed">
+          <thead>
+            <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+              <th class="p-1 w-[4%]"></th>
+              <th data-col="username" class="p-1 w-[14%] cursor-pointer select-none hover:text-gray-800 dark:hover:text-white truncate">Username <span class="sort-indicator ml-1 text-xs"></span></th>
+              <th data-col="displayName" class="p-1 w-[14%] cursor-pointer select-none hover:text-gray-800 dark:hover:text-white truncate">Name <span class="sort-indicator ml-1 text-xs"></span></th>
+              <th data-col="followerCount" class="p-1 w-[12%] cursor-pointer select-none hover:text-gray-800 dark:hover:text-white truncate">Followers <span class="sort-indicator ml-1 text-xs"></span></th>
+              <th data-col="followingCount" class="p-1 w-[12%] cursor-pointer select-none hover:text-gray-800 dark:hover:text-white truncate">Following <span class="sort-indicator ml-1 text-xs"></span></th>
+              <th data-col="heartCount" class="p-1 w-[12%] cursor-pointer select-none hover:text-gray-800 dark:hover:text-white truncate">Likes <span class="sort-indicator ml-1 text-xs"></span></th>
+              <th data-col="videoCount" class="p-1 w-[10%] cursor-pointer select-none hover:text-gray-800 dark:hover:text-white truncate">Videos <span class="sort-indicator ml-1 text-xs"></span></th>
+              <th data-col="msgCount" class="p-1 w-[12%] cursor-pointer select-none hover:text-gray-800 dark:hover:text-white truncate">Msgs <span class="sort-indicator ml-1 text-xs"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr><td colspan="8" class="text-center text-gray-500 dark:text-gray-400 p-4">No data to display</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========== FOOTER ========== -->
+  <footer class="absolute bottom-0 left-0 w-full bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg flex items-center justify-between z-10 pb-[env(safe-area-inset-bottom)] px-2 py-0 pt-1">
+    <div class="flex px-2 w-full h-3 overflow-hidden min-w-0 w-full">
+      <span id="dbStatus" class="flex-1 text-green-600 dark:text-green-400 text-xs ml-2"></span>
+      <span class="text-xs text-gray-500 dark:text-gray-400">v1.0</span>
+    </div>
+  </footer>
+
+<!-- Theme toggle logic (MUST be before the core app script) -->
+<script>
+  (function() {
+    const toggleBtn = document.getElementById('themeToggle');
+    if (!toggleBtn) return; // safety guard
+    
+    const icon = toggleBtn.querySelector('i');
+    const html = document.documentElement;
+    
+    // Load saved theme (default 'dark')
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+      html.classList.remove('dark');
+      icon.classList.remove('fa-moon');
+      icon.classList.add('fa-sun');
+    } else {
+      html.classList.add('dark');
+      icon.classList.add('fa-moon');
+      icon.classList.remove('fa-sun');
+    }
+    
+    toggleBtn.addEventListener('click', () => {
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
+        localStorage.setItem('theme', 'light');
+      } else {
+        html.classList.add('dark');
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+        localStorage.setItem('theme', 'dark');
+      }
+    });
+  })();
+</script>
+
+
+<!-- Core application script (with concurrency) -->
+  <script>
+    (function() {
+      'use strict';
+
+      // ---------- DOM REFERENCES ----------
+      const DOM = {
+        uploadBtn: document.getElementById('uploadBtn'),
+        fetchAllBtn: document.getElementById('fetchAllBtn'),
+        pauseBtn: document.getElementById('pauseBtn'),
+        stopBtn: document.getElementById('stopBtn'),
+        progressBar: document.getElementById('progressBar'),
+        progressText: document.getElementById('progressText'),
+        participantCount: document.getElementById('participantCount'),
+        totalMsgCount: document.getElementById('totalMsgCount'),
+        tableBody: document.getElementById('tableBody'),
+        downloadProfilesBtn: document.getElementById('downloadProfilesBtn'),
+        downloadMessagesBtn: document.getElementById('downloadMessagesBtn'),
+        downloadSQLiteBtn: document.getElementById('downloadSQLiteBtn'),
+        dbStatusEl: document.getElementById('dbStatus'),
+        profileTableHead: document.querySelector('#profileTable thead'),
+      };
+
+      // ---------- STATE ----------
+      const state = {
+        rawJsonData: null,
+        participants: [],
+        profileData: [],
+        fetchState: 'idle',
+        currentIndex: 0,
+        sqliteDB: null,
+        sqliteReady: false,
+        idb: null,
+        currentSort: { col: 'msgCount', dir: 'desc' },
+      };
+
+      // ---------- HELPERS ----------
+      const helpers = {
+        escapeHtml: (s) => s ? s.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])) : '',
+        formatNumber: (n) => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : n?.toString()||'0',
+        sleep: (ms) => new Promise(res => setTimeout(res, ms)),
+      };
+
+      // ---------- Concurrency helper ----------
+      async function asyncPool(limit, items, iteratorFn) {
+        const ret = [];
+        const executing = [];
+        for (const item of items) {
+          const p = Promise.resolve().then(() => iteratorFn(item));
+          ret.push(p);
+          if (limit <= items.length) {
+            const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+            executing.push(e);
+            if (executing.length >= limit) {
+              await Promise.race(executing);
+            }
+          }
+        }
+        return Promise.all(ret);
+      }
+
+      // ---------- EXTRACTION ----------
+      const extraction = {
+        participants: function(jsonData, { stripDots = true } = {}) {
+          const chatHistory = jsonData?.["Direct Message"]?.["Direct Messages"]?.["ChatHistory"];
+          if (!chatHistory || typeof chatHistory !== 'object') throw new Error("ChatHistory not found");
+          const countMap = new Map();
+          for (const [chatKey, messages] of Object.entries(chatHistory)) {
+            if (!chatKey.startsWith("Chat History with ") || !Array.isArray(messages)) continue;
+            let participant = chatKey.slice("Chat History with ".length).replace(/:$/, '').trim();
+            if (stripDots) participant = participant.replace(/^[.@]+/, '');
+            for (const msg of messages) {
+              let from = (msg.From || '').trim();
+              if (stripDots) from = from.replace(/^[.@]+/, '');
+              let to = '';
+              if (from && from !== participant) to = participant;
+              if (from) countMap.set(from, (countMap.get(from) || 0) + 1);
+              if (to)   countMap.set(to,   (countMap.get(to)   || 0) + 1);
+            }
+          }
+          return Array.from(countMap.entries())
+            .map(([username, count]) => ({ username, msgCount: count }))
+            .sort((a, b) => b.msgCount - a.msgCount || a.username.localeCompare(b.username));
+        },
+
+        messages: function(jsonData, { stripDots = true } = {}) {
+          const chatHistory = jsonData?.["Direct Message"]?.["Direct Messages"]?.["ChatHistory"];
+          if (!chatHistory || typeof chatHistory !== 'object') throw new Error("ChatHistory not found");
+          const allMessages = [];
+          for (const [chatKey, messages] of Object.entries(chatHistory)) {
+            if (!chatKey.startsWith("Chat History with ") || !Array.isArray(messages)) continue;
+            let participant = chatKey.slice("Chat History with ".length).replace(/:$/, '').trim();
+            if (stripDots) participant = participant.replace(/^[.@]+/, '');
+            for (const msg of messages) {
+              let from = (msg.From || '').trim();
+              if (stripDots) from = from.replace(/^[.@]+/, '');
+              let to = '';
+              if (from && from !== participant) to = participant;
+              allMessages.push({ date: msg.Date || '', from, to, content: msg.Content || '' });
+            }
+          }
+          return allMessages;
+        }
+      };
+
+      // ---------- API / FETCHING ----------
+      const api = {
+        fetchProfile: async function(username, options = {}) {
+          const DEFAULT_BASE_URL = 'https://tik-proxy.vercel.app';
+          const baseUrl = options.baseUrl || DEFAULT_BASE_URL;
+          const apiKey = options.apiKey || localStorage.getItem('myKey');
+          if (!apiKey) throw new Error('No API key found. Set localStorage.myKey first.');
+
+          const url = `${baseUrl.replace(/\/$/, '')}/api/full?username=${encodeURIComponent(username.trim().replace(/^@/, ''))}`;
+          const controller = new AbortController();
+          const timeout = options.timeout || 15000;
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+          try {
+            const res = await fetch(url, {
+              headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (!res.ok) {
+              let errMsg = `HTTP ${res.status}`;
+              try { const err = await res.json(); errMsg = err.error || errMsg; } catch (_) {}
+              throw new Error(errMsg);
+            }
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Unknown API error');
+            return data;
+          } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') throw new Error('Request timeout');
+            throw err;
+          }
+        },
+
+        fetchAvatarBlob: async function(avatarUrl) {
+          if (!avatarUrl) return null;
+          try {
+            const response = await fetch(avatarUrl);
+            if (!response.ok) return null;
+            return await response.blob();
+          } catch (e) {
+            console.warn('Failed to fetch avatar blob', avatarUrl, e);
+            return null;
+          }
+        }
+      };
+
+      // ---------- FLATTEN PROFILE ----------
+      function flattenProfileData(apiResponse, msgCount) {
+        const profile = apiResponse.profile || {};
+        const stats = apiResponse.stats || {};
+        return { ...profile, ...stats, msgCount: msgCount || 0 };
+      }
+
+      // ---------- DATABASE (IndexedDB + JaferSQL) ----------
+      const database = {
+        openIndexedDB: function() {
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open('msgProxyExtractDB', 2);
+            request.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains('profiles')) {
+                db.createObjectStore('profiles', { keyPath: 'username' });
+              }
+            };
+            request.onsuccess = (event) => {
+              state.idb = event.target.result;
+              resolve(state.idb);
+            };
+            request.onerror = (event) => reject(event.target.error);
+          });
+        },
+
+        storeInIDB: async function(flatProfile) {
+          if (!state.idb) await database.openIndexedDB();
+          const tx = state.idb.transaction('profiles', 'readwrite');
+          const store = tx.objectStore('profiles');
+          store.put(flatProfile);
+          return new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; });
+        },
+
+        initSQLite: async function() {
+          if (state.sqliteDB) {
+            try { state.sqliteDB.jaferClose(); } catch(e) {}
+            state.sqliteDB = null;
+          }
+          try {
+            state.sqliteDB = await JaferSQL.jaferInit();
+            state.sqliteDB.jaferExec(`CREATE TABLE IF NOT EXISTS profiles (
+              username TEXT PRIMARY KEY,
+              displayName TEXT, avatarUrl TEXT, bio TEXT,
+              verified INTEGER, privateAccount INTEGER, secUid TEXT,
+              followerCount INTEGER, followingCount INTEGER, heartCount INTEGER,
+              videoCount INTEGER, msgCount INTEGER,
+              status TEXT, error TEXT, avatar BLOB
+            )`);
+            state.sqliteReady = true;
+          } catch (err) {
+            console.error('Failed to initialize JaferSQL:', err);
+            state.sqliteReady = false;
+            state.sqliteDB = null;
+          }
+        },
+
+        insertIntoSQLite: async function(flat) {
+          if (!state.sqliteReady || !state.sqliteDB) return;
+          try {
+            let avatarBinary = null;
+            if (flat.avatar instanceof Blob) {
+              const buf = await flat.avatar.arrayBuffer();
+              avatarBinary = new Uint8Array(buf);
+            }
+            const stmt = state.sqliteDB._db.prepare(`INSERT OR REPLACE INTO profiles
+              (username, displayName, avatarUrl, bio, verified, privateAccount, secUid,
+               followerCount, followingCount, heartCount, videoCount, msgCount, status, error, avatar)
+              VALUES (:username, :displayName, :avatarUrl, :bio, :verified, :privateAccount, :secUid,
+                      :followerCount, :followingCount, :heartCount, :videoCount, :msgCount, :status, :error, :avatar)`);
+            stmt.bind({
+              ':username': flat.username,
+              ':displayName': flat.displayName || null,
+              ':avatarUrl': flat.avatarUrl || null,
+              ':bio': flat.bio || null,
+              ':verified': flat.verified ? 1 : 0,
+              ':privateAccount': flat.privateAccount ? 1 : 0,
+              ':secUid': flat.secUid || null,
+              ':followerCount': flat.followerCount || 0,
+              ':followingCount': flat.followingCount || 0,
+              ':heartCount': flat.heartCount || 0,
+              ':videoCount': flat.videoCount || 0,
+              ':msgCount': flat.msgCount || 0,
+              ':status': flat.status || 'success',
+              ':error': flat.error || null,
+              ':avatar': avatarBinary
+            });
+            stmt.step();
+            stmt.free();
+          } catch (err) { console.error('SQLite insert error', flat.username, err); }
+        },
+
+        updateStatusDisplay: function() {
+          const btn = DOM.downloadSQLiteBtn;
+          const el = DOM.dbStatusEl;
+          if (state.sqliteReady && state.profileData.length) {
+            const success = state.profileData.filter(r => r.status === 'success').length;
+            const failed = state.profileData.filter(r => r.status === 'failed').length;
+            el.textContent = `${success} ok, ${failed} fail → ${state.profileData.length} total`;
+            btn.disabled = false;
+          } else {
+            el.textContent = 'No data yet';
+            btn.disabled = true;
+          }
+        }
+      };
+
+      // ---------- RENDERING ----------
+      const render = {
+        table: function() {
+          const data = state.profileData;
+          const tbody = DOM.tableBody;
+          if (!data.length) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-gray-500 dark:text-gray-400 p-4">No data to display</td></tr>`;
+            return;
+          }
+          const sorted = [...data].sort((a, b) => {
+            let valA = a[state.currentSort.col];
+            let valB = b[state.currentSort.col];
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
+            if (valA < valB) return state.currentSort.dir === 'asc' ? -1 : 1;
+            if (valA > valB) return state.currentSort.dir === 'asc' ? 1 : -1;
+            return 0;
+          });
+          let html = '';
+          for (const row of sorted) {
+            const isFailed = row.status === 'failed';
+            html += `<tr class="border-b border-gray-200 dark:border-gray-700 ${isFailed ? 'opacity-60' : ''}">
+              <td class="p-1"><img class="w-5 h-5 rounded-full object-cover border border-pink-600" src="${helpers.escapeHtml(row.avatarUrl)}" alt="" onerror="this.style.display='none'"></td>
+              <td class="p-1 font-medium truncate">${helpers.escapeHtml(row.username)}${isFailed ? ' <span class="bg-pink-600 text-white text-xs px-1 py-0.5 rounded ml-1">fail</span>' : ''}</td>
+              <td class="p-1 truncate">${helpers.escapeHtml(row.displayName || '—')}${row.verified ? ' <span class="bg-cyan-400 text-black text-xs px-1 py-0.5 rounded ml-1">✓</span>' : ''}</td>
+              <td class="p-1 truncate">${helpers.formatNumber(row.followerCount)}</td>
+              <td class="p-1 truncate">${helpers.formatNumber(row.followingCount)}</td>
+              <td class="p-1 truncate">${helpers.formatNumber(row.heartCount)}</td>
+              <td class="p-1 truncate">${helpers.formatNumber(row.videoCount)}</td>
+              <td class="p-1 truncate font-bold">${helpers.formatNumber(row.msgCount)}</td>
+            </tr>`;
+          }
+          tbody.innerHTML = html;
+          render.sortIndicators();
+        },
+
+        sortIndicators: function() {
+          DOM.profileTableHead.querySelectorAll('th[data-col]').forEach(th => {
+            const col = th.dataset.col;
+            const indicator = th.querySelector('.sort-indicator');
+            if (indicator) {
+              indicator.textContent = (col === state.currentSort.col) ? (state.currentSort.dir === 'asc' ? '▲' : '▼') : '';
+            }
+          });
+        },
+
+        stats: function() {
+          DOM.participantCount.textContent = state.participants.length;
+          DOM.totalMsgCount.textContent = state.participants.reduce((sum, p) => sum + p.msgCount, 0);
+        },
+
+        progress: function(current, total, message) {
+          DOM.progressBar.style.width = ((current / total) * 100) + '%';
+          DOM.progressText.textContent = message;
+        }
+      };
+
+      // ---------- BATCH / PAUSE / STOP CONTROL ----------
+      const batchControl = {
+        updateButtons: function() {
+          const fetchBtn = DOM.fetchAllBtn;
+          const pauseBtn = DOM.pauseBtn;
+          const stopBtn = DOM.stopBtn;
+
+          fetchBtn.disabled = (state.fetchState !== 'idle' || !state.participants.length);
+
+          const isActive = (state.fetchState === 'running' || state.fetchState === 'paused');
+          pauseBtn.disabled = !isActive;
+          stopBtn.disabled = !isActive;
+
+          pauseBtn.innerHTML = (state.fetchState === 'paused')
+            ? '<i class="fa-solid fa-play mr-1"></i> Resume'
+            : '<i class="fa-solid fa-pause mr-1"></i> Pause';
+        },
+
+        pause: function() {
+          if (state.fetchState === 'running') state.fetchState = 'paused';
+          else if (state.fetchState === 'paused') state.fetchState = 'running';
+          batchControl.updateButtons();
+        },
+
+        stop: function() {
+          state.fetchState = 'stopped';
+          batchControl.updateButtons();
+        },
+
+        waitIfPaused: async function() {
+          while (state.fetchState === 'paused') {
+            await helpers.sleep(200);
+          }
+        },
+
+        fetchAllProfiles: async function() {
+          state.fetchState = 'running';
+          batchControl.updateButtons();
+          const list = state.participants;
+          const total = list.length;
+          await database.initSQLite();
+          state.currentIndex = 0;
+          render.progress(0, total, 'Starting...');
+
+          // ----- Concurrency settings -----
+          const MAX_CONCURRENT = 5;      // increase for more speed, decrease if you see failures
+          // ---------------------------------
+
+          await asyncPool(MAX_CONCURRENT, list, async (p) => {
+            if (state.fetchState === 'stopped') return;
+            await batchControl.waitIfPaused();
+            if (state.fetchState === 'stopped') return;
+
+            const idx = state.currentIndex++;
+            render.progress(idx, total, `Profile ${idx+1}/${total}: @${p.username}`);
+
+            try {
+              const resp = await api.fetchProfile(p.username, { timeout: 15000 });
+              let flat = flattenProfileData(resp, p.msgCount);
+              flat.status = 'success';
+              flat.avatar = await api.fetchAvatarBlob(flat.avatarUrl);
+              state.profileData.push(flat);
+              database.storeInIDB(flat).catch(e => console.error(e));
+              await database.insertIntoSQLite(flat);
+            } catch (err) {
+              const failedFlat = {
+                username: p.username, displayName: '', avatarUrl: '', bio: '',
+                verified: false, privateAccount: false, secUid: '',
+                followerCount: 0, followingCount: 0, heartCount: 0, videoCount: 0,
+                msgCount: p.msgCount, status: 'failed', error: err.message
+              };
+              state.profileData.push(failedFlat);
+              await database.insertIntoSQLite(failedFlat).catch(e => console.error(e));
+            }
+
+            // Optional: tiny delay between starts to avoid hammering the proxy
+            // await helpers.sleep(200);
+
+            render.table();
+            database.updateStatusDisplay();
+            render.progress(state.currentIndex, total, `${state.currentIndex}/${total} profiles processed`);
+          });
+
+          if (state.fetchState !== 'stopped') {
+            const success = state.profileData.filter(r => r.status === 'success').length;
+            render.progress(total, total, `Done! ${success}/${total} profiles.`);
+          } else {
+            DOM.progressText.textContent = `Stopped after ${state.currentIndex} profiles.`;
+          }
+          state.fetchState = 'idle';
+          batchControl.updateButtons();
+          database.updateStatusDisplay();
+        }
+      };
+
+      // ---------- DOWNLOADS ----------
+      const downloads = {
+        json: function(data, filename) {
+          const cleaned = data.map(({avatar, ...rest}) => rest);
+          const blob = new Blob([JSON.stringify(cleaned, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          a.click();
+        },
+
+        profilesJSON: function() {
+          if (!state.profileData.length) return alert('No profile data yet.');
+          downloads.json(state.profileData, 'tiktok_profiles.json');
+        },
+
+        messagesJSON: function() {
+          if (!state.rawJsonData) return alert('Upload a TikTok export first.');
+          const messages = extraction.messages(state.rawJsonData);
+          const blob = new Blob([JSON.stringify(messages, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'tiktok_messages.json';
+          a.click();
+        },
+
+        sqliteDB: async function() {
+          if (!state.sqliteReady || !state.sqliteDB) {
+            alert('SQLite database not ready.');
+            return;
+          }
+          const data = state.sqliteDB.jaferExport();
+          const blob = new Blob([data], { type: 'application/x-sqlite3' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'tiktok_profiles.db';
+          a.click();
+        }
+      };
+
+      // ---------- EVENT LISTENERS & INIT ----------
+      function init() {
+        DOM.uploadBtn.addEventListener('click', () => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json';
+          input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            state.profileData = [];
+            if (state.sqliteDB) { try { state.sqliteDB.jaferClose(); } catch(e) {} state.sqliteDB = null; }
+            state.sqliteReady = false;
+            database.updateStatusDisplay();
+            try {
+              const text = await file.text();
+              state.rawJsonData = JSON.parse(text);
+              state.participants = extraction.participants(state.rawJsonData);
+              render.stats();
+              if (!state.participants.length) {
+                render.table();
+                return;
+              }
+              DOM.downloadMessagesBtn.disabled = false;
+              DOM.downloadProfilesBtn.disabled = true;
+              DOM.progressBar.style.width = '0%';
+              DOM.progressText.textContent = '';
+              render.table();
+              state.fetchState = 'idle';
+              batchControl.updateButtons();
+              database.openIndexedDB().catch(e => console.error(e));
+            } catch (err) {
+              alert('Error: ' + helpers.escapeHtml(err.message));
+            }
+          };
+          input.click();
+        });
+
+        DOM.fetchAllBtn.addEventListener('click', async () => {
+          if (!state.participants.length || state.fetchState !== 'idle') return;
+          DOM.downloadProfilesBtn.disabled = true;
+          await batchControl.fetchAllProfiles();
+          if (state.profileData.length) DOM.downloadProfilesBtn.disabled = false;
+        });
+
+        DOM.pauseBtn.addEventListener('click', batchControl.pause);
+        DOM.stopBtn.addEventListener('click', batchControl.stop);
+
+        DOM.downloadProfilesBtn.addEventListener('click', downloads.profilesJSON);
+        DOM.downloadMessagesBtn.addEventListener('click', downloads.messagesJSON);
+        DOM.downloadSQLiteBtn.addEventListener('click', downloads.sqliteDB);
+
+        DOM.profileTableHead.addEventListener('click', (e) => {
+          const th = e.target.closest('th[data-col]');
+          if (!th) return;
+          const col = th.dataset.col;
+          if (state.currentSort.col === col) {
+            state.currentSort.dir = state.currentSort.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.currentSort.col = col;
+            state.currentSort.dir = 'desc';
+          }
+          render.table();
+        });
+
+        batchControl.updateButtons();
+      }
+
+      init();
+    })();
+  </script>
+  
+</body>
+</html>
